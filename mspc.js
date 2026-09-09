@@ -24,13 +24,14 @@ const runBridesmaids = require('./bridesmaids.js');
 const runParties = require('./parties.js');
 const runApartmentAndGifts = require('./apartment-gifts.js');
 const runBattlePassChests = require('./battlepass-chests.js');
-
+const runDuelFP = require('./duel-fp.js');
 
 
 const scripts = [
   { name: 'Burn Energy - Before Chests', fn: runBurnEnergy, alwaysRun: true },
   { name: 'Battle Pass Chests', fn: runBattlePassChests, alwaysRun: true },
   { name: 'Burn Energy - After Chests', fn: runBurnEnergy, alwaysRun: true },
+  { name: 'Raise stats', fn: runDuelFP, alwaysRun: true },
 
   /*{ name: 'Fashion Magazine', fn: runFashionMagazine, envKey: 'LP_FASHION_MAGAZINE_URL' },
 
@@ -44,11 +45,11 @@ const scripts = [
 
   { name: 'Parties', fn: runParties, alwaysRun: false },
 
-  { name: 'Memory Event', fn: runMemoryEvent, envKey: 'LP_MEMORY_URL' },*/
+  { name: 'Memory Event', fn: runMemoryEvent, envKey: 'LP_MEMORY_URL' },
 
   { name: 'Furniture Script', fn: runFurnitureScript, alwaysRun: true },
 
-  /*{ name: 'Daily Tasks', fn: runDailyTasks, alwaysRun: false },
+  { name: 'Daily Tasks', fn: runDailyTasks, alwaysRun: false },
 
   { name: 'Boyfriend Kiss', fn: runBoyfriendKiss, alwaysRun: false },
 
