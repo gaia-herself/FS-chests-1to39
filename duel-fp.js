@@ -127,13 +127,9 @@ module.exports = async function runDuelFP(page) {
   // Open the Duels page
   // ============================================================
 
-  console.log('🌐 Step 1: Opening Duels page...');
-
   await page.goto(DUELS_URL, {
     waitUntil: 'domcontentloaded'
   });
-
-  console.log('✅ Duels page loaded.');
 
   // Give the page a little time to finish populating its
   // dynamically loaded elements.
@@ -145,8 +141,9 @@ module.exports = async function runDuelFP(page) {
   // Send buyFashionPoints 6 times (unconditionally)
   // ============================================================
 
-  console.log('');
-  console.log('💳 Step 2: Sending buyFashionPoints x6 (fpToBuy=2201)...');
+  let buySuccessCount = 0;
+  let buyFailCount = 0;
+  let buyFirstError = null;
 
   for (let i = 1; i <= 6; i++) {
 
@@ -175,48 +172,43 @@ module.exports = async function runDuelFP(page) {
 
       }
 
-      try {
+      const data = JSON.parse(responseText);
 
-        const data = JSON.parse(responseText);
+      if (data.status === 1) {
 
-        if (data.status === 1) {
+        buySuccessCount++;
 
-          console.log(`✅ buyFashionPoints ${i}/6 OK`);
+      } else {
 
-        } else {
-
-          console.log(
-            `⚠️ buyFashionPoints ${i}/6 status=${data.status} | ${trimForLog(responseText)}`
-          );
-
-        }
-
-      } catch {
-
-        console.log(
-          `⚠️ buyFashionPoints ${i}/6: non-JSON response | ${trimForLog(responseText)}`
-        );
+        buyFailCount++;
+        if (!buyFirstError) buyFirstError = `status=${data.status}`;
 
       }
 
     } catch (error) {
 
-      console.log(`❌ buyFashionPoints ${i}/6 failed: ${trimForLog(error.message)}`);
+      buyFailCount++;
+      if (!buyFirstError) buyFirstError = trimForLog(error.message);
 
       // Stop here because the rest of the flow depends on the
       // conversion having actually happened.
+      console.log(
+        `💳 buyFashionPoints: ${buySuccessCount} success, ${buyFailCount} failed (stopped early — ${buyFirstError})`
+      );
       throw error;
     }
   }
+
+  console.log(
+    `💳 buyFashionPoints: ${buySuccessCount} success, ${buyFailCount} failed` +
+    (buyFirstError ? ` (first issue: ${buyFirstError})` : '')
+  );
 
 
   // ============================================================
   // STEP 3
   // Send getStatistics and read the base/practice numbers
   // ============================================================
-
-  console.log('');
-  console.log('📊 Step 3: Sending getStatistics...');
 
   let statValues = {};
 
@@ -277,9 +269,6 @@ module.exports = async function runDuelFP(page) {
   // STEP 4
   // Decide: Case 1 (stop) vs Case 2 (train weakest stat)
   // ============================================================
-
-  console.log('');
-  console.log('🧮 Step 4: Evaluating stats...');
 
   // If any of the 4 tracked values is missing or NaN, treat that
   // as "could not confirm >= 200" and stop, same as Case 1.
@@ -360,6 +349,10 @@ module.exports = async function runDuelFP(page) {
   console.log('');
   console.log(`🏋️ Step 5: Sending trainStats for ${STAT_LABELS[chosenKey]}...`);
 
+  let trainSuccessCount = 0;
+  let trainFailCount = 0;
+  let trainFirstError = null;
+
   for (let i = 1; i <= 1; i++) {
 
     try {
@@ -389,35 +382,23 @@ module.exports = async function runDuelFP(page) {
 
       }
 
-      try {
+      const data = JSON.parse(responseText);
 
-        const data = JSON.parse(responseText);
+      if (data.status === 1) {
 
-        if (data.status === 1) {
+        trainSuccessCount++;
 
-          console.log(
-            `✅ trainStats ${i}/1 OK${data.message ? ` — ${trimForLog(data.message)}` : ''}`
-          );
+      } else {
 
-        } else {
-
-          console.log(
-            `⚠️ trainStats ${i}/1 status=${data.status} | ${trimForLog(responseText)}`
-          );
-
-        }
-
-      } catch {
-
-        console.log(
-          `⚠️ trainStats ${i}/1: non-JSON response | ${trimForLog(responseText)}`
-        );
+        trainFailCount++;
+        if (!trainFirstError) trainFirstError = `status=${data.status}`;
 
       }
 
     } catch (error) {
 
-      console.log(`❌ trainStats ${i}/1 failed: ${trimForLog(error.message)}`);
+      trainFailCount++;
+      if (!trainFirstError) trainFirstError = trimForLog(error.message);
 
       // One failed rep shouldn't stop the remaining reps.
       continue;
@@ -425,6 +406,11 @@ module.exports = async function runDuelFP(page) {
     }
 
   }
+
+  console.log(
+    `🏋️ trainStats (${STAT_LABELS[chosenKey]}): ${trainSuccessCount} success, ${trainFailCount} failed` +
+    (trainFirstError ? ` (first issue: ${trainFirstError})` : '')
+  );
 
 
   // ============================================================
