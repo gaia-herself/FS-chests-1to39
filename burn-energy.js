@@ -508,7 +508,7 @@ module.exports = async function runBurnEnergy(page) {
         // Original 3 page refreshes.
         // --------------------------------------------------------
 
-        for (let i = 1; i <= 3; i++) {
+        for (let i = 1; i <= 1; i++) {
 
           console.log(
             `🔄 Refreshing Fashion Arena page (${i}/3)...`
