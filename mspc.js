@@ -25,7 +25,7 @@ const runParties = require('./parties.js');
 const runApartmentAndGifts = require('./apartment-gifts.js');
 const runBattlePassChests = require('./battlepass-chests.js');
 const runDuelFP = require('./duel-fp.js');
-const runTrainStats = require('./train-stats.js');
+/*const runTrainStats = require('./train-stats.js');*/ // malfunctioning and takes time.
 
 
 const scripts = [
@@ -33,7 +33,7 @@ const scripts = [
   { name: 'Battle Pass Chests', fn: runBattlePassChests, alwaysRun: true },
   { name: 'Burn Energy - After Chests', fn: runBurnEnergy, alwaysRun: true },
   { name: 'Raise stats', fn: runDuelFP, alwaysRun: true },
-  { name: 'Train Stats', fn: runTrainStats, alwaysRun: true },
+ /* { name: 'Train Stats', fn: runTrainStats, alwaysRun: true }, */ // malfunctioning
 
   /*{ name: 'Fashion Magazine', fn: runFashionMagazine, envKey: 'LP_FASHION_MAGAZINE_URL' },
 
