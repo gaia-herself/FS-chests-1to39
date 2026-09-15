@@ -19,6 +19,10 @@
 // - getStatistics goes to /ajax/main.php.
 // - trainStats goes to /ajax/train.php, amount is always 2000.
 // - Playwright's existing logged-in browser session is used.
+//
+// NOTE: Console logging has been trimmed. Instead of printing full
+// response bodies (which can be large HTML/JSON blobs), we now print
+// a short one-line summary (status + trimmed snippet) for each request.
 
 
 const DUELS_URL = 'https://v3.g.ladypopular.com/duels.php';
@@ -35,6 +39,29 @@ const STAT_LABELS = {
 
 // The 4 stats we care about, in the order we want to check them.
 const STAT_KEYS = ['style', 'creativity', 'devotion', 'beauty'];
+
+// Max characters to show from any raw response snippet in logs.
+const LOG_SNIPPET_LENGTH = 120;
+
+
+// ------------------------------------------------------------
+// Helper: shorten a string for logging purposes only.
+// ------------------------------------------------------------
+
+function trimForLog(text, maxLength = LOG_SNIPPET_LENGTH) {
+
+  if (!text) {
+    return '';
+  }
+
+  const singleLine = text.replace(/\s+/g, ' ').trim();
+
+  if (singleLine.length <= maxLength) {
+    return singleLine;
+  }
+
+  return `${singleLine.slice(0, maxLength)}… [${singleLine.length} chars total]`;
+}
 
 
 // ------------------------------------------------------------
@@ -119,14 +146,9 @@ module.exports = async function runDuelFP(page) {
   // ============================================================
 
   console.log('');
-  console.log('💳 Step 2: Sending buyFashionPoints requests...');
-  console.log('📦 type=buyFashionPoints');
-  console.log('📦 fpToBuy=2201');
-  console.log('🔄 Sending request 6 times...');
+  console.log('💳 Step 2: Sending buyFashionPoints x6 (fpToBuy=2201)...');
 
   for (let i = 1; i <= 6; i++) {
-
-    console.log(`➡️ buyFashionPoints request ${i}/6...`);
 
     try {
 
@@ -145,18 +167,10 @@ module.exports = async function runDuelFP(page) {
 
       const responseText = await response.text();
 
-      console.log(
-        `📡 buyFashionPoints (${i}/6) HTTP status: ${response.status()}`
-      );
-
-      console.log(
-        `📨 buyFashionPoints (${i}/6) response: ${responseText}`
-      );
-
       if (!response.ok()) {
 
         throw new Error(
-          `buyFashionPoints request returned HTTP ${response.status()}`
+          `HTTP ${response.status()} | ${trimForLog(responseText)}`
         );
 
       }
@@ -167,14 +181,12 @@ module.exports = async function runDuelFP(page) {
 
         if (data.status === 1) {
 
-          console.log(
-            `✅ buyFashionPoints (${i}/6) succeeded.`
-          );
+          console.log(`✅ buyFashionPoints ${i}/6 OK`);
 
         } else {
 
           console.log(
-            `⚠️ buyFashionPoints (${i}/6) returned status: ${data.status}`
+            `⚠️ buyFashionPoints ${i}/6 status=${data.status} | ${trimForLog(responseText)}`
           );
 
         }
@@ -182,16 +194,14 @@ module.exports = async function runDuelFP(page) {
       } catch {
 
         console.log(
-          `⚠️ Could not parse buyFashionPoints (${i}/6) response as JSON.`
+          `⚠️ buyFashionPoints ${i}/6: non-JSON response | ${trimForLog(responseText)}`
         );
 
       }
 
     } catch (error) {
 
-      console.log(
-        `❌ buyFashionPoints (${i}/6) failed: ${error.message}`
-      );
+      console.log(`❌ buyFashionPoints ${i}/6 failed: ${trimForLog(error.message)}`);
 
       // Stop here because the rest of the flow depends on the
       // conversion having actually happened.
@@ -206,8 +216,7 @@ module.exports = async function runDuelFP(page) {
   // ============================================================
 
   console.log('');
-  console.log('📊 Step 3: Sending getStatistics request...');
-  console.log('📦 type=getStatistics');
+  console.log('📊 Step 3: Sending getStatistics...');
 
   let statValues = {};
 
@@ -227,14 +236,10 @@ module.exports = async function runDuelFP(page) {
 
     const responseText = await response.text();
 
-    console.log(
-      `📡 getStatistics HTTP status: ${response.status()}`
-    );
-
     if (!response.ok()) {
 
       throw new Error(
-        `getStatistics request returned HTTP ${response.status()}`
+        `HTTP ${response.status()} | ${trimForLog(responseText)}`
       );
 
     }
@@ -244,33 +249,23 @@ module.exports = async function runDuelFP(page) {
     if (data.status !== 1 || !data.statsHtml) {
 
       throw new Error(
-        `getStatistics returned unexpected data (status=${data.status})`
+        `unexpected data (status=${data.status})`
       );
 
     }
 
     statValues = extractBaseStatValues(data.statsHtml);
 
-    console.log('🔎 Base/practice numbers extracted:');
+    const summary = STAT_KEYS
+      .map((key) => `${STAT_LABELS[key]}=${statValues[key]}`)
+      .join(', ');
 
-    for (const key of STAT_KEYS) {
-
-      console.log(
-        `   ${STAT_LABELS[key]} (${key}): ${statValues[key]}`
-      );
-
-    }
+    console.log(`🔎 Base/practice numbers: ${summary}`);
 
   } catch (error) {
 
-    console.log(
-      `❌ getStatistics request failed or could not be parsed: ${error.message}`
-    );
-
-    console.log(
-      '🛑 Cannot evaluate stats. Stopping here.'
-    );
-
+    console.log(`❌ getStatistics failed: ${trimForLog(error.message)}`);
+    console.log('🛑 Cannot evaluate stats. Stopping here.');
     console.log('────────────────────────────────────────────────────────────────────────────────');
 
     return;
@@ -294,14 +289,8 @@ module.exports = async function runDuelFP(page) {
 
   if (missingOrInvalid) {
 
-    console.log(
-      '⚠️ One or more stat values could not be read.'
-    );
-
-    console.log(
-      '🛑 Case 1 (by default): stopping without further steps.'
-    );
-
+    console.log('⚠️ One or more stat values could not be read.');
+    console.log('🛑 Case 1 (by default): stopping without further steps.');
     console.log('────────────────────────────────────────────────────────────────────────────────');
 
     return;
@@ -315,24 +304,19 @@ module.exports = async function runDuelFP(page) {
   if (belowThreshold.length > 0) {
 
     console.log(
-      `⚠️ At least one stat is below 200: ${belowThreshold
+      `⚠️ Below 200: ${belowThreshold
         .map((key) => `${STAT_LABELS[key]}=${statValues[key]}`)
         .join(', ')}`
     );
 
-    console.log(
-      '🛑 Case 1: stopping here without going forward with next steps.'
-    );
-
+    console.log('🛑 Case 1: stopping here without going forward with next steps.');
     console.log('────────────────────────────────────────────────────────────────────────────────');
 
     return;
 
   }
 
-  console.log(
-    '✅ Case 2: all 4 stats are 200 or greater.'
-  );
+  console.log('✅ Case 2: all 4 stats are 200 or greater.');
 
 
   // ------------------------------------------------------------
@@ -351,22 +335,18 @@ module.exports = async function runDuelFP(page) {
   const chosenKey =
     lowestKeys[Math.floor(Math.random() * lowestKeys.length)];
 
-  console.log(
-    `🎯 Lowest base/practice value is ${minValue}.`
-  );
-
   if (lowestKeys.length > 1) {
 
     console.log(
-      `🎲 Tie between: ${lowestKeys
+      `🎲 Tie at ${minValue} between: ${lowestKeys
         .map((key) => STAT_LABELS[key])
-        .join(', ')}. Randomly picked: ${STAT_LABELS[chosenKey]}.`
+        .join(', ')}. Picked: ${STAT_LABELS[chosenKey]}.`
     );
 
   } else {
 
     console.log(
-      `🏆 Selected stat: ${STAT_LABELS[chosenKey]} (${chosenKey}).`
+      `🏆 Selected stat: ${STAT_LABELS[chosenKey]} (${minValue}).`
     );
 
   }
@@ -378,13 +358,9 @@ module.exports = async function runDuelFP(page) {
   // ============================================================
 
   console.log('');
-  console.log(
-    `🏋️ Step 5: Sending trainStats for ${STAT_LABELS[chosenKey]} (${chosenKey}) x5...`
-  );
+  console.log(`🏋️ Step 5: Sending trainStats for ${STAT_LABELS[chosenKey]}...`);
 
   for (let i = 1; i <= 1; i++) {
-
-    console.log(`➡️ trainStats request ${i}/1 for ${chosenKey}...`);
 
     try {
 
@@ -405,18 +381,10 @@ module.exports = async function runDuelFP(page) {
 
       const responseText = await response.text();
 
-      console.log(
-        `📡 trainStats (${i}/1) HTTP status: ${response.status()}`
-      );
-
-      console.log(
-        `📨 trainStats (${i}/1) response: ${responseText}`
-      );
-
       if (!response.ok()) {
 
         throw new Error(
-          `trainStats request returned HTTP ${response.status()}`
+          `HTTP ${response.status()} | ${trimForLog(responseText)}`
         );
 
       }
@@ -428,13 +396,13 @@ module.exports = async function runDuelFP(page) {
         if (data.status === 1) {
 
           console.log(
-            `✅ trainStats (${i}/1) succeeded: ${data.message || ''}`
+            `✅ trainStats ${i}/1 OK${data.message ? ` — ${trimForLog(data.message)}` : ''}`
           );
 
         } else {
 
           console.log(
-            `⚠️ trainStats (${i}/1) returned status: ${data.status}`
+            `⚠️ trainStats ${i}/1 status=${data.status} | ${trimForLog(responseText)}`
           );
 
         }
@@ -442,16 +410,14 @@ module.exports = async function runDuelFP(page) {
       } catch {
 
         console.log(
-          `⚠️ Could not parse trainStats (${i}/1) response as JSON.`
+          `⚠️ trainStats ${i}/1: non-JSON response | ${trimForLog(responseText)}`
         );
 
       }
 
     } catch (error) {
 
-      console.log(
-        `❌ trainStats request ${i}/1 failed: ${error.message}`
-      );
+      console.log(`❌ trainStats ${i}/1 failed: ${trimForLog(error.message)}`);
 
       // One failed rep shouldn't stop the remaining reps.
       continue;
