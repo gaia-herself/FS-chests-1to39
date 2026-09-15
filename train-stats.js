@@ -75,8 +75,15 @@ module.exports = async function runTrainStats(page) {
   // ==============================================================
   // 🚀 MAIN LOOP
   // ==============================================================
+  // No per-request logging anymore. We just tally counts as we go
+  // and print one summary line at the very end.
+  // ==============================================================
 
-  console.log(`🏋️ Train Stats: starting ${numberOfRounds} rounds (${numberOfRounds * 4} requests)...`);
+  let sentCount = 0;
+  let successCount = 0;
+  let failCount = 0;
+  let firstError = null;
+  let stoppedEarly = false;
 
   // Make sure we're actually on a page that can reach the endpoint
   // (mirrors how burn-energy.js navigates before firing requests).
@@ -89,43 +96,49 @@ module.exports = async function runTrainStats(page) {
     console.log(`⚠️ Could not navigate before training: ${err.message}`);
   }
 
+  outerLoop:
   for (let round = 0; round < numberOfRounds; round++) {
 
     const amount = amounts[round] ?? 2000;
 
-    console.log(`\n🔁 ROUND ${round + 1}/${numberOfRounds} — AMOUNT: ${amount}`);
-
-    let stopEverything = false;
-
     for (const popularityType of popularityTypes) {
+
+      sentCount++;
 
       try {
 
         const result = await sendTrainRequest(popularityType, amount);
 
-        console.log(`✓ ${popularityType} | amount=${amount} |`, result);
+        if (result.status === 1) {
 
-        if (result.status !== 1) {
-          console.log(`⛔ Server returned failure for ${popularityType}. Stopping Train Stats.`);
-          stopEverything = true;
-          break;
+          successCount++;
+
+        } else {
+
+          failCount++;
+          if (!firstError) firstError = `status=${result.status} (round ${round + 1}, ${popularityType}, amount=${amount})`;
+          stoppedEarly = true;
+          break outerLoop;
+
         }
 
       } catch (error) {
 
-        console.log(`❌ Request failed: ${popularityType} | amount=${amount} | ${error.message}`);
-        stopEverything = true;
-        break;
+        failCount++;
+        if (!firstError) firstError = `${error.message} (round ${round + 1}, ${popularityType}, amount=${amount})`;
+        stoppedEarly = true;
+        break outerLoop;
 
       }
 
       await page.waitForTimeout(delayBetweenRequests);
     }
 
-    if (stopEverything) break;
-
     await page.waitForTimeout(delayBetweenRounds);
   }
 
-  console.log(`🏁 Train Stats finished.`);
+  console.log(
+    `🏋️ Train Stats: sent ${sentCount}, success ${successCount}, failed ${failCount}` +
+    (stoppedEarly ? ` (stopped early — ${firstError})` : '')
+  );
 };
