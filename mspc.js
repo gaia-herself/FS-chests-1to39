@@ -29,9 +29,9 @@ const runDuelFP = require('./duel-fp.js');
 
 
 const scripts = [
-  { name: 'Burn Energy - Before Chests', fn: runBurnEnergy, alwaysRun: true },
-  //{ name: 'Battle Pass Chests', fn: runBattlePassChests, alwaysRun: true }, //opens chests
-  //{ name: 'Burn Energy - After Chests', fn: runBurnEnergy, alwaysRun: true }, //burn energy after opening chests
+  //{ name: 'Burn Energy - Before Chests', fn: runBurnEnergy, alwaysRun: true },
+  { name: 'Battle Pass Chests', fn: runBattlePassChests, alwaysRun: true }, //opens chests
+  { name: 'Burn Energy - After Chests', fn: runBurnEnergy, alwaysRun: true }, //burn energy after opening chests
   /*{ name: 'Raise stats', fn: runDuelFP, alwaysRun: true },*/
  /* { name: 'Train Stats', fn: runTrainStats, alwaysRun: true }, */ // malfunctioning
 
